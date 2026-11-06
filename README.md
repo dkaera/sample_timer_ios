@@ -1,5 +1,9 @@
 # Timer for iOS
 
+[![Tests](https://github.com/dkaera/sample_timer_ios/actions/workflows/tests.yml/badge.svg?branch=develop)](https://github.com/dkaera/sample_timer_ios/actions/workflows/tests.yml)
+[![Coverage](https://codecov.io/gh/dkaera/sample_timer_ios/branch/develop/graph/badge.svg)](https://codecov.io/gh/dkaera/sample_timer_ios)
+[![Swift 6](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](https://www.swift.org/)
+
 A native SwiftUI port of the Android timer at `/Users/kaera/repo_git_private/timer`.
 
 ## Open and run
@@ -44,4 +48,4 @@ xcodebuild -project Timer.xcodeproj -scheme Timer \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
-The unit tests cover default durations, countdown rounding, pause/resume, reset, mode changes, completion after suspension, and state restoration. The UI test covers mode selection, a ticking countdown, pause, and reset. Background notification delivery and sound should also be checked on a physical iPhone before release.
+The unit tests cover default durations, countdown rounding, pause/resume, reset, mode changes, completion after suspension, and state restoration. The UI tests cover mode selection, a ticking countdown, pause, and reset. Background notification delivery and sound should also be checked on a physical iPhone before release.

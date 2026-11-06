@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -20,8 +21,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Run core tests
-        run: swift test
+      - name: Run core tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Locate coverage report
+        id: coverage
+        run: echo "path=$(swift test --show-codecov-path)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: ${{ steps.coverage.outputs.path }}
+          flags: core-tests
+          use_oidc: true
 
       - name: Run UI tests
         run: |
