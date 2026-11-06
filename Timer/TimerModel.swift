@@ -11,10 +11,15 @@ final class TimerModel: ObservableObject {
     private var ticker: AnyCancellable?
     private var notificationTask: Task<Void, Never>?
     private var isActive = true
+    private let requestsNotificationAuthorization: Bool
     private let storageKey = "timer.state.v1"
     private let notificationID = "timer.completion"
 
-    init() {
+    init(resetStoredState: Bool = false, requestsNotificationAuthorization: Bool = true) {
+        self.requestsNotificationAuthorization = requestsNotificationAuthorization
+        if resetStoredState {
+            UserDefaults.standard.removeObject(forKey: storageKey)
+        }
         if let data = UserDefaults.standard.data(forKey: storageKey),
            let saved = try? JSONDecoder().decode(TimerEngine.self, from: data) {
             engine = saved
@@ -36,7 +41,7 @@ final class TimerModel: ObservableObject {
         engine.toggle(at: now)
         save()
         cancelNotification()
-        if engine.isRunning {
+        if engine.isRunning && requestsNotificationAuthorization {
             // Ask in context, after the user starts their first timer.
             Task {
                 _ = try? await UNUserNotificationCenter.current()
