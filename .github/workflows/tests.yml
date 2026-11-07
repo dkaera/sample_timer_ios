@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -35,7 +34,7 @@ jobs:
           fail_ci_if_error: true
           files: ${{ steps.coverage.outputs.path }}
           flags: core-tests
-          use_oidc: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Run UI tests
         run: |
