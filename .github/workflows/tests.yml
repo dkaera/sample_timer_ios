@@ -1,0 +1,76 @@
+name: Tests
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Swift and UI tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Run core tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Export coverage as LCOV
+        run: |
+          coverage_dir=$(dirname "$(swift test --show-codecov-path)")
+          test_bundle=$(find "$(dirname "$coverage_dir")" -maxdepth 1 -name '*.xctest' -type d -print -quit)
+          test -n "$test_bundle"
+          test_binary="$test_bundle/Contents/MacOS/$(basename "$test_bundle" .xctest)"
+          xcrun llvm-cov export "$test_binary" \
+            -instr-profile="$coverage_dir/default.profdata" \
+            -format=lcov \
+            -ignore-filename-regex='(/Tests/|/\.build/)' \
+            | sed "s|^SF:$GITHUB_WORKSPACE/|SF:|" > "$RUNNER_TEMP/coverage.lcov"
+          grep -q '^SF:Timer/TimerEngine.swift$' "$RUNNER_TEMP/coverage.lcov"
+          grep -Eq '^DA:[0-9]+,[1-9][0-9]*' "$RUNNER_TEMP/coverage.lcov"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: ${{ runner.temp }}/coverage.lcov
+          flags: core-tests
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Prepare iOS simulator
+        id: simulator
+        run: |
+          xcodebuild -version
+          runtime="com.apple.CoreSimulator.SimRuntime.iOS-18-5"
+          if ! xcrun simctl list runtimes available --json | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["runtimes"]
+          sys.exit(0 if any(r["identifier"] == sys.argv[1] for r in runtimes) else 1)
+          ' "$runtime"; then
+            xcodebuild -downloadPlatform iOS -buildVersion 18.5
+          fi
+          udid=$(xcrun simctl create "Timer CI" \
+            com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro "$runtime")
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      - name: Run UI tests
+        run: |
+          xcodebuild test \
+            -project Timer.xcodeproj \
+            -scheme Timer \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
+            -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO
